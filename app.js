@@ -1,7 +1,7 @@
 // LES DOSSIERS OUBLIÉS — connexion à Supabase
 
-const SUPABASE_URL = "COLLE_ICI_TON_URL_SUPABASE";
-const SUPABASE_KEY = "COLLE_ICI_TA_CLE_PUBLIQUE";
+const SUPABASE_URL = "https://zgrayhnorvuqjalrjrbr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_1SIVdVtTK9e1PS3gGajUBw_lI7DoKIp";
 
 async function chargerAffaires() {
   const conteneur = document.querySelector("#dossiers .cards");
