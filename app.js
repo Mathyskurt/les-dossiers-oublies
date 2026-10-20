@@ -44,15 +44,33 @@ async function chargerAffaires() {
       return;
     }
 
-    conteneur.innerHTML = affaires.map(affaire => `
-      <article>
+    
+conteneur.innerHTML = affaires.map(affaire => `
+    <article class="carte-dossier">
         <small>DOSSIER ${affaire.id}</small>
         <h3>${echapperHTML(affaire.titre)}</h3>
-        <p>${echapperHTML(affaire.resume)}</p>
+        <p>${echapperHTML(affaire.resume || "")}</p>
         <hr>
         <small>Statut : ${echapperHTML(affaire.statut || "À vérifier")}</small>
-      </article>
-    `).join("");
+        <p>
+            <button
+                type="button"
+                class="ouvrir-dossier"
+                data-id="${affaire.id}">
+                Consulter le dossier →
+            </button>
+        </p>
+    </article>
+`).join("");
+
+conteneur.querySelectorAll(".ouvrir-dossier").forEach(bouton => {
+    bouton.addEventListener("click", () => {
+        const id = bouton.dataset.id;
+        window.location.href =
+            `dossier.html?id=${encodeURIComponent(id)}`;
+    });
+});
+
 
   } catch (erreur) {
     console.error(erreur);
