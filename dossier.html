@@ -1,0 +1,219 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dossier | Les Dossiers Oubliés</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111111;
+      color: #eeeeee;
+      font-family: Arial, sans-serif;
+      line-height: 1.7;
+    }
+    header, main, footer {
+      max-width: 900px;
+      margin: auto;
+      padding: 24px;
+    }
+    header {
+      border-bottom: 1px solid #b99a55;
+    }
+    .marque, h2 {
+      color: #d7b66d;
+    }
+    h1 {
+      font-family: Georgia, serif;
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      line-height: 1.15;
+    }
+    section, .bloc {
+      border: 1px solid #393939;
+      background: #191919;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+    a {
+      color: #e0bf75;
+    }
+    .statut {
+      color: #e0bf75;
+      text-transform: uppercase;
+      font-size: .85rem;
+    }
+    .erreur {
+      color: #ffb4a9;
+    }
+    button {
+      background: #d7b66d;
+      color: #111;
+      border: 0;
+      border-radius: 5px;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="marque">LES DOSSIERS OUBLIÉS</div>
+    <p><a href="index.html">← Retour aux archives</a></p>
+  </header>
+
+  <main>
+    <p class="statut" id="statut">Chargement du dossier…</p>
+    <h1 id="titre">Dossier en cours de chargement</h1>
+    <div class="bloc" id="resume"></div>
+
+    <section>
+      <h2>Chronologie des faits</h2>
+      <div id="chronologie">Chargement de la chronologie…</div>
+    </section>
+
+    <section>
+      <h2>Sources documentaires</h2>
+      <div id="sources">Chargement des sources…</div>
+    </section>
+
+    <p id="message" role="status"></p>
+  </main>
+
+  <footer>
+    <p>Les informations publiées doivent être sourcées, vérifiées et datées.</p>
+  </footer>
+
+  <script>
+    const PARAMETRES = new URLSearchParams(window.location.search);
+    const ID = PARAMETRES.get("id");
+
+    // À compléter avec les informations de ton projet Supabase.
+    const SUPABASE_URL = "COLLE_ICI_URL_SUPABASE";
+    const SUPABASE_ANON_KEY = "COLLE_ICI_CLE_PUBLIQUE_SUPABASE";
+
+    function afficherTexte(element, valeur) {
+      element.textContent = valeur || "Aucune information disponible pour le moment.";
+    }
+
+    async function charger() {
+      const message = document.getElementById("message");
+
+      if (!ID || !/^\d+$/.test(ID)) {
+        afficherTexte(message, "Aucun dossier valide n’a été indiqué dans l’adresse.");
+        return;
+      }
+
+      if (SUPABASE_URL.includes("COLLE_ICI") ||
+          SUPABASE_ANON_KEY.includes("COLLE_ICI")) {
+        afficherTexte(message, "La connexion à Supabase reste à configurer.");
+        return;
+      }
+
+      try {
+        const entetes = {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+        };
+
+        const reponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/affaires?id=eq.${encodeURIComponent(ID)}&select=id,titre,resume,statut`,
+          { headers: entetes }
+        );
+
+        if (!reponse.ok) {
+          throw new Error("Impossible de lire l’affaire dans Supabase.");
+        }
+
+        const affaires = await reponse.json();
+        const affaire = affaires[0];
+
+        if (!affaire) {
+          afficherTexte(message, "Dossier introuvable ou non accessible.");
+          return;
+        }
+
+        document.title = affaire.titre + " | Les Dossiers Oubliés";
+        afficherTexte(document.getElementById("titre"), affaire.titre);
+        afficherTexte(document.getElementById("resume"), affaire.resume);
+        afficherTexte(document.getElementById("statut"), affaire.statut);
+
+        const chronologieReponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/chronologie?affaire_id=eq.${encodeURIComponent(ID)}&select=date_evenement,precision_date,description&order=date_evenement.asc`,
+          { headers: entetes }
+        );
+
+        if (!chronologieReponse.ok) {
+          throw new Error("Impossible de lire la chronologie.");
+        }
+
+        const evenements = await chronologieReponse.json();
+        const zoneChronologie = document.getElementById("chronologie");
+        zoneChronologie.replaceChildren();
+
+        if (!evenements.length) {
+          afficherTexte(zoneChronologie, "");
+        } else {
+          evenements.forEach(evenement => {
+            const bloc = document.createElement("div");
+            const date = document.createElement("strong");
+            const description = document.createElement("p");
+
+            date.textContent = evenement.precision_date ||
+              evenement.date_evenement || "Date non précisée";
+            description.textContent = evenement.description;
+            bloc.append(date, description);
+            zoneChronologie.append(bloc);
+          });
+        }
+
+        const sourcesReponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/sources?affaire_id=eq.${encodeURIComponent(ID)}&select=titre,organisme,url,date_publication,consulte_le,type_source`,
+          { headers: entetes }
+        );
+
+        if (!sourcesReponse.ok) {
+          throw new Error("Impossible de lire les sources.");
+        }
+
+        const listeSources = await sourcesReponse.json();
+        const zoneSources = document.getElementById("sources");
+        zoneSources.replaceChildren();
+
+        if (!listeSources.length) {
+          afficherTexte(zoneSources, "");
+        } else {
+          listeSources.forEach(source => {
+            const bloc = document.createElement("div");
+            const titreSource = document.createElement("p");
+            titreSource.textContent =
+              `${source.titre} — ${source.organisme || "Organisme non précisé"}`;
+
+            if (source.url && /^https?:\/\//i.test(source.url)) {
+              const lien = document.createElement("a");
+              lien.href = source.url;
+              lien.target = "_blank";
+              lien.rel = "noopener noreferrer";
+              lien.textContent = "Consulter la source";
+              bloc.append(titreSource, lien);
+            } else {
+              bloc.append(titreSource);
+            }
+
+            zoneSources.append(bloc);
+          });
+        }
+
+      } catch (erreur) {
+        console.error(erreur);
+        afficherTexte(message,
+          "Erreur de chargement. Vérifie la connexion Supabase et les autorisations de lecture.");
+      }
+    }
+
+    charger();
+  </script>
+</body>
+</html>
